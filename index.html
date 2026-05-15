@@ -265,17 +265,35 @@ const GOLFER_NAMES = {
   "Spaun": ["J.J. Spaun"],
   "Puig": ["Santiago Puig", "Puig"],
   "Poston": ["J.T. Poston"],
-  // PGA Pros
-  "Lenahan": ["Lenahan"],
-  "Shattuck": ["Shattuck"],
-  "Geddes": ["Geddes"],
-  "Fisher": ["Fisher"],
+  // PGA Pros (all 20)
   "Berg": ["Derek Berg", "Berg"],
+  "Bide": ["Francisco Bide", "Bide"],
   "Block": ["Michael Block", "Block"],
-  "Droemer": ["Droemer"],
-  "Collet": ["Collet"],
-  "Vermeer": ["Vermeer"],
+  "Collet": ["Tyler Collet", "Collet"],
+  "Droemer": ["Jesse Droemer", "Droemer"],
+  "Fisher": ["Bryce Fisher", "Fisher"],
+  "Gabriele": ["Chris Gabriele", "Gabriele"],
+  "Geddes": ["Mark Geddes", "Geddes"],
+  "Haynes": ["Zach Haynes", "Haynes"],
+  "Hurt": ["Austin Hurt", "Hurt"],
+  "Jones": ["Jared Jones", "Jones"],
+  "Kartrude": ["Michael Kartrude", "Kartrude"],
+  "Kern": ["Ben Kern", "Kern"],
+  "Lenahan": ["Ryan Lenahan", "Lenahan", "Lenehan", "Ryan Lenehan"],
+  "McClure": ["Paul McClure", "McClure"],
+  "Polland": ["Ben Polland", "Polland"],
+  "Sap": ["Garrett Sap", "Sap"],
+  "Shattuck": ["Braden Shattuck", "Shattuck"],
+  "Vermeer": ["Ryan Vermeer", "Vermeer"],
+  "Wiseman": ["Timothy Wiseman", "Wiseman"],
 };
+
+// All 20 PGA Professionals — bonus is based on lowest among ALL of these
+const ALL_PGA_PROS = [
+  "Berg","Bide","Block","Collet","Droemer","Fisher","Gabriele","Geddes",
+  "Haynes","Hurt","Jones","Kartrude","Kern","Lenahan","McClure","Polland",
+  "Sap","Shattuck","Vermeer","Wiseman"
+];
 
 const ARONIMINK_PAR = 70;
 const MIN_SURVIVING_PICKS = 3; // Need at least 3 picks to survive the cut
@@ -511,17 +529,14 @@ function clearManualScores() {
 function calculateLeaderboard() {
   const results = [];
 
-  // First, figure out which PGA pro(s) have the best score
+  // Find the best (lowest) score among ALL 20 PGA professionals
   const proScores = {};
-  for (const p of PARTICIPANTS) {
-    const proData = findGolferScore(p.pro);
+  for (const proName of ALL_PGA_PROS) {
+    const proData = findGolferScore(proName);
     const proTotal = proData?.total ?? null;
-    if (!proScores[p.pro] || (proTotal !== null && (proScores[p.pro].score === null || proTotal < proScores[p.pro].score))) {
-      proScores[p.pro] = { score: proTotal, displayName: proData?.displayName || p.pro };
-    }
+    proScores[proName] = { score: proTotal, displayName: proData?.displayName || proName };
   }
 
-  // Find the best (lowest) PGA pro score
   let bestProScore = null;
   let bestProNames = [];
   for (const [name, data] of Object.entries(proScores)) {
@@ -662,7 +677,7 @@ function render() {
     const bonusLabel = isTourneyDone ? "-5 bonus applied" : "-5 bonus (applied after R4)";
     proBanner.innerHTML = `
       <div>
-        <div class="pro-label">PGA Pro Bonus Leader</div>
+        <div class="pro-label">PGA Pro Bonus Leader (of 20 pros)</div>
         <div class="pro-detail">${bestProNames.join(" & ")} (${formatScore(bestProScore)})</div>
       </div>
       <div class="pro-bonus">${bonusLabel} → ${proWinners.length ? proWinners.join(", ") : "TBD"}</div>
