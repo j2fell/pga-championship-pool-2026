@@ -389,13 +389,9 @@ async function fetchESPN() {
         }
       }
 
+      // Sum linescores as fallback total (only covers completed rounds)
       let totalVal = null;
-      if (c.score !== undefined) {
-        const raw = typeof c.score === 'object' ? (c.score.value ?? c.score.displayValue) : c.score;
-        const parsed = parseFloat(String(raw).replace('+',''));
-        if (!isNaN(parsed)) totalVal = parsed;
-      }
-      if (totalVal === null && Object.keys(rounds).length > 0) {
+      if (Object.keys(rounds).length > 0) {
         totalVal = Object.values(rounds).reduce((a, b) => a + b, 0);
       }
 
@@ -409,7 +405,29 @@ async function fetchESPN() {
 
       const position = c.status?.position?.displayName || c.sortOrder?.toString() || "";
 
-      golferScores[key] = { displayName, r1: rounds.r1??null, r2: rounds.r2??null, r3: rounds.r3??null, r4: rounds.r4??null, total: totalVal, thru, pos: position, status };
+      // Use ESPN's live total score (accounts for in-progress rounds) over summed linescores
+      // ESPN's score field updates hole-by-hole; linescores only update after a round finishes
+      let liveTotal = null;
+      if (c.score !== undefined) {
+        const raw = typeof c.score === 'object' ? (c.score.value ?? c.score.displayValue) : c.score;
+        const display = String(raw).trim();
+        if (display === "E" || display === "e") liveTotal = 0;
+        else { const p = parseFloat(display.replace('+','')); if (!isNaN(p) && Math.abs(p) <= 40) liveTotal = p; }
+      }
+      // Also check c.statistics for "toPar" or "scoreToPar"
+      if (liveTotal === null) {
+        for (const stat of (c.statistics || [])) {
+          if (/toPar|scoreToPar|total/i.test(stat.name || stat.abbreviation || "")) {
+            const d = String(stat.displayValue ?? stat.value ?? "").trim();
+            if (d === "E") { liveTotal = 0; break; }
+            const p = parseFloat(d.replace('+','')); if (!isNaN(p) && Math.abs(p) <= 40) { liveTotal = p; break; }
+          }
+        }
+      }
+      // Prefer live total over summed linescores (live total includes in-progress round)
+      const finalTotal = liveTotal !== null ? liveTotal : totalVal;
+
+      golferScores[key] = { displayName, r1: rounds.r1??null, r2: rounds.r2??null, r3: rounds.r3??null, r4: rounds.r4??null, total: finalTotal, thru, pos: position, status };
     }
 
     numRoundsAvailable = maxRounds || 1;
@@ -739,6 +757,7 @@ function render() {
       for (let ri = 0; ri < 4; ri++) {
         const rk = `r${ri+1}`;
         const s = proData?.[rk];
+        const isCurrentRound = (ri + 1) === numRoundsAvailable;
         if (s !== null && s !== undefined && !isNaN(s)) {
           html += `<td><span class="round-score ${scoreClass(s)}">${formatScore(s)}</span></td>`;
         } else { html += `<td>-</td>`; }
