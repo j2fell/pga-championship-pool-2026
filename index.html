@@ -529,18 +529,24 @@ function clearManualScores() {
 function calculateLeaderboard() {
   const results = [];
 
-  // Find the best (lowest) score among ALL 20 PGA professionals
+  // Find the best (lowest) score among ALL 20 PGA professionals (exclude cut/wd/dq)
+  const cutStatuses = ["cut","wd","dq"];
   const proScores = {};
   for (const proName of ALL_PGA_PROS) {
     const proData = findGolferScore(proName);
     const proTotal = proData?.total ?? null;
-    proScores[proName] = { score: proTotal, displayName: proData?.displayName || proName };
+    const proStatus = proData?.status || "unknown";
+    const isManuallyCut = CUT_GOLFERS.some(name =>
+      normalize(name) === normalize(proName) || normalize(name) === normalize(proData?.displayName || "")
+    );
+    const isProCut = isManuallyCut || cutStatuses.includes(proStatus);
+    proScores[proName] = { score: proTotal, displayName: proData?.displayName || proName, isCut: isProCut };
   }
 
   let bestProScore = null;
   let bestProNames = [];
   for (const [name, data] of Object.entries(proScores)) {
-    if (data.score === null) continue;
+    if (data.score === null || data.isCut) continue;
     if (bestProScore === null || data.score < bestProScore) {
       bestProScore = data.score;
       bestProNames = [name];
@@ -570,7 +576,6 @@ function calculateLeaderboard() {
     }
 
     // Count how many picks survived the cut
-    const cutStatuses = ["cut","wd","dq"];
     const survivingPicks = golferData.filter(g => !cutStatuses.includes(g.status)).length;
     const eliminated = numRoundsAvailable >= 3 && survivingPicks < MIN_SURVIVING_PICKS;
 
